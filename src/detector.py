@@ -2,7 +2,40 @@ import numpy as np
 from abc import ABC, abstractmethod
 from itertools import combinations_with_replacement
 
-class DetectorODE:
+class Detector(ABC):
+    @abstractmethod
+    def ingest(self, data, standardize=True):
+        '''Data ingestion'''
+        pass
+    
+    @abstractmethod
+    def build_linear_system(self, *args, **kwargs):
+        '''Sets self._A'''
+        pass
+
+    def solve_linear_system(self, verbose=False):
+        U, S, Vt = np.linalg.svd(self._A, full_matrices=False)
+        i_null = np.argmin(np.where(S > 1e-100, S, np.inf))
+        params = Vt[i_null]
+        print(f'\nParameters ({params.shape[0]}):')
+        print(params)
+        if params.sum() == 1:
+            print('Warning: trivial null space solution, check data and polynomial features.')
+        else:
+            residual = np.sum(self._A @ params)
+            if residual < 1e-1:
+                print(f'\nSYSTEM SOLVED: Orthogonality constraint residual = {residual}')
+            else:
+                print(f'Warning: high residual {residual} for null space solution, check data and polynomial features.')
+
+        if verbose:
+            print(f'\nSVD: U: {U.shape}, S: {S.shape}, Vt: {Vt.shape}')
+            print(f'\nSingular values: {S}')
+            print(f'\nNon-trivial null space position: {i_null}')
+            print(f'\nFirst rows of linear system matrix:')
+            print(self._A[:2, :])
+
+class DetectorODE(Detector):
     def ingest(self, data, standardize=True):
         '''
         Calculates d^N+1_x(u) and store data instance. 
@@ -68,7 +101,7 @@ class DetectorODE:
         self._J = np.stack(grads, axis=1) # (M, P, N)
         print(f'\nPolynomial features shape: {self._poly.shape}')
     
-    def solve_linear_system(self, max_polynomial: int, verbose=False):
+    def build_linear_system(self, max_polynomial: int):
         self._poly_eval(max_order=max_polynomial)
         cols_1 = []
         cols_2 = []
@@ -89,34 +122,10 @@ class DetectorODE:
         
         # full linear system matrix (M, 2P)
         A = np.column_stack(cols_1 + cols_2) 
-        
-        # solve for null space of A
-        U, S, Vt = np.linalg.svd(A, full_matrices=False)
-        i_null = np.argmin(np.where(S > 1e-100, S, np.inf))
-        params = Vt[i_null]
-        print(f'\nParameters ({params.shape[0]}):')
-        print(params)
-        if params.sum() == 1:
-            print('Warning: trivial null space solution, check data and polynomial features.')
-        else:
-            residual = np.sum(A @ params)
-            if residual < 1e-1:
-                print(f'\nSYSTEM SOLVED: Orthogonality constraint residual = {residual}')
-            else:
-                print(f'Warning: high residual {residual} for null space solution, check data and polynomial features.')
-
-        if verbose:
-            print(f'\nSVD: U: {U.shape}, S: {S.shape}, Vt: {Vt.shape}')
-            print(f'\nSingular values: {S}')
-            print(f'\nNon-trivial null space position: {i_null}')
-            print(f'\nFirst rows of linear system matrix:')
-            print(A[:2, :])
-
-        self._thetas = params
         self._A = A
+        print(f'Linear system shaped {A.shape}')
 
-
-class DetectorAlg:
+class DetectorAlg(Detector):
     def ingest(self, data, standardize=True):
         '''
         Ingest data and normalise if needed.
@@ -147,31 +156,8 @@ class DetectorAlg:
                 cols.append(np.prod(self._data[:, idx], axis=1))
                 print(f'{idx}')
         return np.column_stack(cols) # (N, P)
-
-    def solve_linear_system(self, delF, max_polynomial=2, verbose=False):
+    
+    def build_linear_system(self, delF, max_polynomial=2):
         A = (delF[:, :, None] * self._polyeval(max_order=max_polynomial)[:, None, :]).reshape(self._data.shape[0], -1)
         print(f'Linear system shaped {A.shape}')
-        # solve for null space of A
-        U, S, Vt = np.linalg.svd(A, full_matrices=False)
-        i_null = np.argmin(np.where(S > 1e-100, S, np.inf))
-        params = Vt[i_null]
-        print(f'\nParameters ({params.shape[0]}):')
-        print(params)
-        if params.sum() == 1:
-            print('Warning: trivial null space solution, check data and polynomial features.')
-        else:
-            residual = np.sum(A @ params)
-            if residual < 1e-1:
-                print(f'\nSYSTEM SOLVED: Orthogonality constraint residual = {residual}')
-            else:
-                print(f'Warning: high residual {residual} for null space solution, check data and polynomial features.')
-
-        if verbose:
-            print(f'\nSVD: U: {U.shape}, S: {S.shape}, Vt: {Vt.shape}')
-            print(f'\nSingular values: {S}')
-            print(f'\nNon-trivial null space position: {i_null}')
-            print(f'\nFirst rows of linear system matrix:')
-            print(A[:2, :])
-
-        self._thetas = params
         self._A = A
