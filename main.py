@@ -37,17 +37,18 @@ def main():
     # detector instance
     if F == "f2":
         de = DetectorODE()
-        de.ingest(data)
+        de.ingest(data, standardize=True)
         de.build_linear_system(max_polynomial=F2["max_polynomial"])
     elif F == "f1":
         de = DetectorAlg()
-        de.ingest(data)
-        delxF = 2 * de._data[:, 0]
-        deluF = - np.ones((de._data.shape[0]))
+        de.ingest(data, standardize=True)
+        delxF = 2 * de._processed[:, 0]
+        deluF = - np.ones((de._processed.shape[0]))
         delF = np.column_stack([delxF, deluF])
         de.build_linear_system(delF, max_polynomial=F1["max_polynomial"])
     
     de.solve_linear_system(verbose=False)
+    de.plot_integral_curves(data[::50], eps=0.01, steps=10)
 
 if __name__ == "__main__":
     main()
