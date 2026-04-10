@@ -1,0 +1,18 @@
+# Data directory - ignore everything except .gitkeep
+data/*
+!data/.gitkeep
+
+# Python cache
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# test notebooks
+test.ipynb
