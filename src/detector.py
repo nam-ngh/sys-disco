@@ -78,7 +78,8 @@ class Detector(ABC):
                     curves[i+1][:, 0] - curves[i][:, 0],
                     curves[i+1][:, 1] - curves[i][:, 1],
                     angles='xy', scale_units='xy', scale=1,
-                    color=plt.cm.cool(i / steps), alpha=0.7
+                    color=plt.cm.Reds(i / steps), alpha=0.7,
+                    label='Integral curves' if i == len(curves) - 2 else None
                 )
             ax.scatter(data[:, 0], data[:, 1], s=5, c='navy', zorder=3, label='original')
             ax.set_xlabel('x'); ax.set_ylabel('u')
@@ -92,14 +93,22 @@ class Detector(ABC):
                     curves[i+1][:, 0] - curves[i][:, 0],
                     curves[i+1][:, 1] - curves[i][:, 1],
                     curves[i+1][:, 2] - curves[i][:, 2],
-                    color=plt.cm.cool(i / steps), alpha=0.7
+                    color=plt.cm.Reds(i / steps), alpha=0.7,
+                    label='Integral curves' if i == len(curves) - 2 else None
                 )
-            ax.scatter(data[:, 0], data[:, 1], data[:, 2], s=5, c='navy', zorder=3, label='original')
+            ax.scatter(data[:, 0], data[:, 1], data[:, 2], s=5, c='navy', zorder=3, label='Trajectories Point Cloud')
             ax.set_xlabel('x'); ax.set_ylabel('u'); ax.set_zlabel("u'")
 
-        ax.set_title('Symmetry vector field')
+        ax.set_title('Integral curves')
         ax.legend()
+        ax.grid(False)
+        ax.xaxis.pane.fill = False  # or True with a color
+        ax.yaxis.pane.fill = False
+        ax.zaxis.pane.fill = False
+        ax.set_facecolor('white')
+        fig.set_facecolor('white')
         plt.tight_layout()
+        plt.savefig('plots/f2.png', facecolor='white')
         plt.show()
 
 #############################################
