@@ -37,14 +37,14 @@ class Detector(ABC):
                 vx = self._poly @ theta_x
                 if not np.allclose(vx, 0):
                     print(f'\nNon-trivial null space position: {idx}/{len(S)}')
-                    print(f'\nParameters ({params.shape[0]}):')
+                    print(f'\nParameters ({params.shape[0]}), norm {np.linalg.norm(params)}:')
                     print(params)
                     self._params = params
                     break
             else:
-                params = Vt[null_kernel_idx].mean(axis=0)
-                print('Warning: all recovered symmetries have zero vx, using average of the null kernel to recover symmetry')
-                print(f'\nParameters ({params.shape[0]}):')
+                params = Vt[idx]
+                print('Warning: all recovered symmetries have zero vx, using last null space vector')
+                print(f'\nParameters ({params.shape[0]}), norm {np.linalg.norm(params)}:')
                 print(params)
                 self._params = params
 
