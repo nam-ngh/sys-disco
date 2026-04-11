@@ -23,14 +23,30 @@ class Detector(ABC):
         '''Integrate data with learned parameters'''
         pass
 
-    def solve_linear_system(self, verbose=False):
+    def solve_linear_system(self, kernel_thres=0.1, verbose=False):
         U, S, Vt = np.linalg.svd(self._A, full_matrices=False)
-        i_null = np.argmin(np.where(S > 1e-100, S, np.inf))
-        params = Vt[i_null]
-        print(f'\nNon-trivial null space position: {i_null}/{len(S)}')
-        print(f'\nParameters ({params.shape[0]}):')
-        print(params)
-        self._params = params
+        null_kernel_idx = np.where((S > 1e-30) & (S < kernel_thres))[0]
+        if len(null_kernel_idx) == 0:
+            raise ValueError(
+                'No non-trivial null space found, try checking data quality or raising kernel_thres (not recommended)'
+            )
+        else:
+            for idx in (null_kernel_idx):
+                params = Vt[idx]
+                theta_x = params[params.shape[0]//2:]
+                vx = self._poly @ theta_x
+                if not np.allclose(vx, 0):
+                    print(f'\nNon-trivial null space position: {idx}/{len(S)}')
+                    print(f'\nParameters ({params.shape[0]}):')
+                    print(params)
+                    self._params = params
+                    break
+            else:
+                params = Vt[null_kernel_idx].mean(axis=0)
+                print('Warning: all recovered symmetries have zero vx, using average of the null kernel to recover symmetry')
+                print(f'\nParameters ({params.shape[0]}):')
+                print(params)
+                self._params = params
 
         if params.sum() == 1:
             print('Warning: trivial null space solution, check data and polynomial features.')
@@ -43,7 +59,7 @@ class Detector(ABC):
 
         if verbose:
             print(f'\nSVD: U: {U.shape}, S: {S.shape}, Vt: {Vt.shape}')
-            print(f'\nSingular values: {S}')
+            print(f'\nSingular values:\n {S}')
             print(f'\nFirst rows of linear system matrix:')
             print(self._A[:2, :])
 
@@ -88,13 +104,20 @@ class Detector(ABC):
 
 #############################################
 class DetectorODE(Detector):
-    def ingest(self, data, standardize=True):
+    def ingest(self, data, npts, standardize=True):
         '''
-        Calculates d^N+1_x(u) and store data instance. 
-        Assumes data is shaped (M, N) and columns are ordered by 
-        increasing order of derivatives d^n_x(u).
+        Process trajectory data for ODEs, shaped (M, N).
+        M is total number of points across all trajectories.
+        N is number of dimensions (x, u, dxu, d2xu, ...).
+        Different trajectories should be stacked vertically.
+        Columns are ordered by increasing order of derivatives dnxu.
         '''
-        raw = np.column_stack([data, np.gradient(data[:, -1], data[:, 0])])
+        n_trajectories = data.shape[0] // npts
+        grads = np.concatenate([
+            np.gradient(data[i*npts:(i+1)*npts, -1], data[i*npts:(i+1)*npts, 0])
+            for i in range(n_trajectories)
+        ])
+        raw = np.column_stack([data, grads])
         self._raw = raw
         print(f'Raw data first rows:\n{raw[:2, :]}')
 
@@ -181,6 +204,7 @@ class DetectorODE(Detector):
         # full linear system matrix (M, 2P)
         A = np.column_stack(cols_1 + cols_2) 
         self._A = A
+        self._poly = poly
         self._poly_order = max_polynomial
         print(f'Linear system shaped {A.shape}')
     
@@ -251,9 +275,11 @@ class DetectorAlg(Detector):
         return np.column_stack(cols) # (N, P)
     
     def build_linear_system(self, delF, max_polynomial=2):
-        A = (delF[:, :, None] * self.poly_eval(data=self._processed, max_order=max_polynomial)[:, None, :]).reshape(self._processed.shape[0], -1)
+        poly = self.poly_eval(data=self._processed, max_order=max_polynomial)
+        A = (delF[:, :, None] * poly[:, None, :]).reshape(self._processed.shape[0], -1)
         print(f'Linear system shaped {A.shape}')
         self._A = A
+        self._poly = poly
         self._poly_order = max_polynomial
 
     def integrate(self, data, eps: float=0.001):

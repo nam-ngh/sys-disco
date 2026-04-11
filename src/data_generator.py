@@ -38,20 +38,25 @@ class DataGenerator:
         print(f'Points generated, shape {self._points.shape}. First point: {self._points[0]}')
         self._save(name='f1')
 
-    def f2(self, a=1):
-        '''Generate synthetic points on manifold F(x, u, u') = u' - au = 0'''
-        self._points = np.zeros((self.npts, 3)) # (x, u, u')
+    def f2(self, n_trajectories=5, a=1):
+        '''
+        Generate synthetic points on manifold F(x, u, u') = u' - au = 0
+        Default 5 stacked trajectories of npts each, with different intial conditions u0
+        '''
+        trajectories = []
 
-        self._points[:, 0] = np.linspace(self.x_min, self.x_max, self.npts)
-
-        u = np.exp(a * self._points[:, 0])
-        dxu = a * u  # dxu = a*e^(ax)
-
-        noise_u = np.random.uniform(-self.noise, self.noise, self.npts) * np.abs(u)
-        noise_dxu = np.random.uniform(-self.noise, self.noise, self.npts) * np.abs(dxu)
-
-        self._points[:, 1] = u + noise_u
-        self._points[:, 2] = dxu + noise_dxu
-
-        print(f'Points generated, shape {self._points.shape}. First point: {self._points[0]}')
+        for u0 in range(1, n_trajectories + 1):
+            x = np.linspace(self.x_min, self.x_max, self.npts)
+            points = np.zeros((self.npts, 3))
+            points[:, 0] = x
+            u = u0 * np.exp(a * x)
+            dxu = a * u
+            noise_u   = np.random.uniform(-self.noise, self.noise, self.npts) * np.abs(u)
+            noise_dxu = np.random.uniform(-self.noise, self.noise, self.npts) * np.abs(dxu)
+            points[:, 1] = u + noise_u
+            points[:, 2] = dxu + noise_dxu
+            trajectories.append(points)
+        
+        self._points = np.vstack(trajectories)  # (npts * n_trajectories, 3)
+        print(f'Points generated, shape {self._points.shape}. First 2 points: {self._points[: 2]}')
         self._save(name='f2')

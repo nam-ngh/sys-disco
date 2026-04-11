@@ -1,7 +1,7 @@
 import argparse
 import numpy as np
 from src.detector import DetectorODE, DetectorAlg
-from config import F1, F2
+from config import F1, F2, DATA
 
 def get_data():
     parser = argparse.ArgumentParser()
@@ -37,7 +37,7 @@ def main():
     # detector instance
     if F == "f2":
         de = DetectorODE()
-        de.ingest(data, standardize=True)
+        de.ingest(data, npts=DATA["npts"], standardize=True)
         de.build_linear_system(max_polynomial=F2["max_polynomial"])
     elif F == "f1":
         de = DetectorAlg()
