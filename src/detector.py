@@ -99,7 +99,6 @@ class Detector(ABC):
             ax.scatter(data[:, 0], data[:, 1], data[:, 2], s=5, c='navy', zorder=3, label='Trajectories Point Cloud')
             ax.set_xlabel('x'); ax.set_ylabel('u'); ax.set_zlabel("u'")
 
-        ax.set_title('Integral curves')
         ax.legend()
         ax.grid(False)
         ax.xaxis.pane.fill = False  # or True with a color
@@ -128,7 +127,7 @@ class DetectorODE(Detector):
         ])
         raw = np.column_stack([data, grads])
         self._raw = raw
-        print(f'Raw data first rows:\n{raw[:2, :]}')
+        print(f'Raw data first rows:\n{raw[:10, :]}')
 
         if standardize:
             mean = np.zeros(raw.shape[1])
