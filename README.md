@@ -7,4 +7,5 @@ We present a novel framework for detecting Lie symmetry groups present in a nois
 ![](plots/f2.png)
 
 Developed by: Stef Nam Nguyen, supervised by: Dr. Andrew Lawrie
+
 Queen's Building, University of Bristol, BS8 1TR, UK
